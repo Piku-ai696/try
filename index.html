@@ -1,8 +1,7 @@
 <!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CDN Request Tester</title>  <style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>CDN Request Tester</title>  <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
@@ -12,7 +11,7 @@
 
     .container {
       max-width: 800px;
-      margin: 0 auto;
+      margin: auto;
       background: white;
       padding: 30px;
       border-radius: 12px;
@@ -22,29 +21,25 @@
       width: 100%;
       box-sizing: border-box;
       padding: 14px;
+      margin-top: 10px;
       font-size: 16px;
       border: 1px solid #ccc;
       border-radius: 8px;
-      margin-top: 10px;
     }
 
     button {
       margin-top: 15px;
       padding: 14px 25px;
       font-size: 16px;
-      border: none;
+      border: 0;
       border-radius: 8px;
-      background: black;
+      background: #111;
       color: white;
       cursor: pointer;
     }
 
     button:hover {
       background: #333;
-    }
-
-    button:active {
-      transform: scale(0.98);
     }
 
     #status {
@@ -64,163 +59,165 @@
       white-space: pre-wrap;
       word-break: break-word;
       overflow: auto;
-      max-height: 500px;
+      max-height: 600px;
     }
-  </style></head><body>  <div class="container"><h1>CDN Request Tester</h1>
+  </style></head><body><div class="container">  <h1>CDN Request Tester</h1>  <label for="targetUrl">
+    Playlist or Segment URL
+  </label><input
+id="targetUrl"
+type="text"
+placeholder="https://example.com/playlist.m3u8"
 
-<label for="targetUrl">
-  Playlist or Segment URL
-</label>
+«»
 
-<input
-  id="targetUrl"
-  type="text"
-  placeholder="https://example.com/playlist.m3u8"
->
+  <button id="sendButton" type="button">
+    Send Request
+  </button>  <div id="status">Ready.</div>  <pre id="response"></pre></div><script>
+document.addEventListener("DOMContentLoaded", function () {
 
-<button id="sendButton" type="button">
-  Send Request
-</button>
-
-<div id="status">
-  Ready.
-</div>
-
-<pre id="response"></pre>
-
-  </div>  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-
-      const button = document.getElementById("sendButton");
-      const input = document.getElementById("targetUrl");
-      const status = document.getElementById("status");
-      const responseBox = document.getElementById("response");
+  const button = document.getElementById("sendButton");
+  const input = document.getElementById("targetUrl");
+  const status = document.getElementById("status");
+  const responseBox = document.getElementById("response");
 
 
-      /*
-       * PUT YOUR CUSTOM HEADER HERE
-       */
-      const CUSTOM_HEADERS = {
-        "X-Custom-Header": "https://flixcloud.cc"
-      };
+  /*
+   * ==========================================
+   * REFERRER TEST
+   * ==========================================
+   *
+   * Put an authorized referrer here.
+   *
+   * IMPORTANT:
+   * The browser controls the actual Referer
+   * header. This option does not bypass
+   * browser security restrictions.
+   */
+
+  const TEST_REFERRER = "https://flixcloud.cc";
 
 
-      button.addEventListener("click", async function () {
+  button.addEventListener("click", async function () {
 
-        const url = input.value.trim();
+    const url = input.value.trim();
 
+    responseBox.textContent = "";
 
-        // This proves the button itself was clicked.
-        status.textContent = "BUTTON CLICKED";
+    if (!url) {
+      status.textContent =
+        "BUTTON CLICKED\n\nNo URL entered.";
+      return;
+    }
 
-
-        if (!url) {
-          status.textContent =
-            "BUTTON CLICKED\n\nNo URL entered.";
-          return;
-        }
-
-
-        status.textContent =
-          "BUTTON CLICKED\n\n" +
-          "Requesting:\n" +
-          url;
-
-
-        responseBox.textContent = "";
+    status.textContent =
+      "BUTTON CLICKED\n\n" +
+      "Requesting:\n" +
+      url +
+      "\n\n" +
+      "Requested referrer:\n" +
+      TEST_REFERRER;
 
 
-        try {
+    try {
 
-          const response = await fetch(url, {
-            method: "GET",
-            headers: CUSTOM_HEADERS,
-            credentials: "omit",
-            cache: "no-store"
-          });
+      const response = await fetch(url, {
 
+        method: "GET",
 
-          const contentType =
-            response.headers.get("content-type") || "";
+        /*
+         * Browser-side referrer control.
+         */
+        referrer: TEST_REFERRER,
 
+        referrerPolicy: "unsafe-url",
 
-          let headers = "";
+        credentials: "omit",
 
-          response.headers.forEach(function (value, key) {
-            headers += key + ": " + value + "\n";
-          });
-
-
-          if (
-            contentType.includes("mpegurl") ||
-            contentType.includes("text") ||
-            contentType.includes("json") ||
-            url.toLowerCase().includes(".m3u8")
-          ) {
-
-            const text = await response.text();
-
-            status.textContent =
-              "SUCCESS\n\n" +
-              "HTTP " +
-              response.status +
-              " " +
-              response.statusText +
-              "\n\n" +
-              "Content-Type: " +
-              contentType +
-              "\n\n" +
-              "Response Headers:\n" +
-              headers;
-
-            responseBox.textContent = text;
-
-          } else {
-
-            const blob = await response.blob();
-
-            status.textContent =
-              "SUCCESS\n\n" +
-              "HTTP " +
-              response.status +
-              " " +
-              response.statusText +
-              "\n\n" +
-              "Content-Type: " +
-              contentType +
-              "\n\n" +
-              "Size: " +
-              blob.size.toLocaleString() +
-              " bytes\n\n" +
-              "Response Headers:\n" +
-              headers;
-
-            responseBox.textContent =
-              "Binary response received.\n\n" +
-              "Size: " +
-              blob.size.toLocaleString() +
-              " bytes";
-
-          }
-
-        } catch (error) {
-
-          console.error(error);
-
-          status.textContent =
-            "BUTTON WORKS ✓\n\n" +
-            "REQUEST FAILED\n\n" +
-            error.message;
-
-          responseBox.textContent =
-            "The browser could not expose the response.\n\n" +
-            "Check the browser Console and Network tabs. " +
-            "For cross-origin URLs, CORS is the most common reason.";
-
-        }
-
+        cache: "no-store"
       });
 
-    });
-  </script></body>
+
+      let headers = "";
+
+      response.headers.forEach(function (value, key) {
+        headers += key + ": " + value + "\n";
+      });
+
+
+      const contentType =
+        response.headers.get("content-type") || "";
+
+
+      if (
+        contentType.includes("mpegurl") ||
+        contentType.includes("text") ||
+        contentType.includes("json") ||
+        url.toLowerCase().includes(".m3u8")
+      ) {
+
+        const text = await response.text();
+
+        status.textContent =
+          "SUCCESS ✓\n\n" +
+          "HTTP: " +
+          response.status +
+          " " +
+          response.statusText +
+          "\n\n" +
+          "Content-Type: " +
+          contentType +
+          "\n\n" +
+          "Response headers:\n" +
+          headers;
+
+        responseBox.textContent = text;
+
+      } else {
+
+        const blob = await response.blob();
+
+        status.textContent =
+          "SUCCESS ✓\n\n" +
+          "HTTP: " +
+          response.status +
+          " " +
+          response.statusText +
+          "\n\n" +
+          "Content-Type: " +
+          contentType +
+          "\n\n" +
+          "Size: " +
+          blob.size.toLocaleString() +
+          " bytes\n\n" +
+          "Response headers:\n" +
+          headers;
+
+        responseBox.textContent =
+          "Binary response received.\n\n" +
+          "Size: " +
+          blob.size.toLocaleString() +
+          " bytes";
+      }
+
+
+    } catch (error) {
+
+      console.error("Fetch error:", error);
+
+      status.textContent =
+        "BUTTON WORKS ✓\n\n" +
+        "REQUEST FAILED\n\n" +
+        error.message;
+
+      responseBox.textContent =
+        "Check DevTools → Network.\n\n" +
+        "Look at the actual request headers to see " +
+        "what Referer the browser sent.";
+
+    }
+
+  });
+
+});
+</script></body>
 </html>

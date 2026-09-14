@@ -23,7 +23,7 @@ export default {
     // Don't turn this into an unrestricted public proxy.
     // Replace this with domains you control/are authorized to access.
     const allowedHosts = [
-      "example.com"
+      "https://try-3s2.pages.dev/"
     ];
 
     if (!allowedHosts.includes(targetUrl.hostname)) {

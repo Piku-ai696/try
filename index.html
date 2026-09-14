@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proxy Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+
+    button {
+      padding: 12px 20px;
+      cursor: pointer;
+    }
+
+    pre {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f4f4f4;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 500px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Stream Request Test</h2>
+
+  <input
+    id="url"
+    type="url"
+    placeholder="https://example.com/playlist.m3u8"
+  >
+
+  <button id="fetchButton">Fetch Stream</button>
+
+  <pre id="output">Response will appear here...</pre>
+
+  <script>
+    const button = document.getElementById("fetchButton");
+    const input = document.getElementById("url");
+    const output = document.getElementById("output");
+
+    button.addEventListener("click", async () => {
+      const targetUrl = input.value.trim();
+
+      if (!targetUrl) {
+        output.textContent = "Enter a URL first.";
+        return;
+      }
+
+      try {
+        output.textContent = "Requesting...";
+
+        // Encode the target URL so it can safely be placed
+        // inside the query string.
+        const proxyUrl =
+          "/proxy.js?url=" + encodeURIComponent(targetUrl);
+
+        const response = await fetch(proxyUrl);
+
+        const data = await response.text();
+
+        output.textContent =
+          "HTTP " + response.status + "\n\n" + data;
+
+      } catch (error) {
+        output.textContent = "Error: " + error.message;
+      }
+    });
+  </script>
+
+</body>
+</html>

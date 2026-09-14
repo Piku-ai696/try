@@ -1,67 +1,226 @@
-<!DOCTYPE html><html>
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>Button Test</title>  <style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CDN Request Tester</title>  <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 40px;
+      margin: 0;
+      padding: 40px 20px;
+      background: #f4f4f4;
     }
 
-    #testButton {
-      display: block;
-      padding: 20px 40px;
-      margin-top: 20px;
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+    }
 
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 14px 25px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
       background: black;
       color: white;
-
-      border: 0;
-      border-radius: 8px;
-
-      font-size: 20px;
-
       cursor: pointer;
     }
 
-    #testButton:hover {
-      background: #444;
+    button:hover {
+      background: #333;
     }
 
-    #result {
-      margin-top: 30px;
-      padding: 20px;
+    button:active {
+      transform: scale(0.98);
+    }
+
+    #status {
+      margin-top: 20px;
+      padding: 15px;
       background: #eee;
-      font-size: 18px;
+      border-radius: 8px;
       white-space: pre-wrap;
     }
-  </style></head><body>  <h1>Request Test</h1><input
-id="url"
-type="text"
-placeholder="Paste playlist or segment URL"
-style="
-width:100%;
-max-width:800px;
-padding:15px;
-box-sizing:border-box;
-font-size:16px;
-"
 
-«»
+    #response {
+      margin-top: 15px;
+      padding: 15px;
+      background: #111;
+      color: white;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+      max-height: 500px;
+    }
+  </style></head><body>  <div class="container"><h1>CDN Request Tester</h1>
 
-<button
-id="testButton"
-type="button"
-onclick="
-document.getElementById('result').innerText =
-'BUTTON IS WORKING!\n\nURL: ' +
-document.getElementById('url').value;
-"
+<label for="targetUrl">
+  Playlist or Segment URL
+</label>
 
-«»
+<input
+  id="targetUrl"
+  type="text"
+  placeholder="https://example.com/playlist.m3u8"
+>
 
-CLICK ME
+<button id="sendButton" type="button">
+  Send Request
+</button>
 
-  </button>  <div id="result">
-    Waiting for button click...
-  </div></body>
+<div id="status">
+  Ready.
+</div>
+
+<pre id="response"></pre>
+
+  </div>  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+      const button = document.getElementById("sendButton");
+      const input = document.getElementById("targetUrl");
+      const status = document.getElementById("status");
+      const responseBox = document.getElementById("response");
+
+
+      /*
+       * PUT YOUR CUSTOM HEADER HERE
+       */
+      const CUSTOM_HEADERS = {
+        "X-Custom-Header": "test"
+      };
+
+
+      button.addEventListener("click", async function () {
+
+        const url = input.value.trim();
+
+
+        // This proves the button itself was clicked.
+        status.textContent = "BUTTON CLICKED";
+
+
+        if (!url) {
+          status.textContent =
+            "BUTTON CLICKED\n\nNo URL entered.";
+          return;
+        }
+
+
+        status.textContent =
+          "BUTTON CLICKED\n\n" +
+          "Requesting:\n" +
+          url;
+
+
+        responseBox.textContent = "";
+
+
+        try {
+
+          const response = await fetch(url, {
+            method: "GET",
+            headers: CUSTOM_HEADERS,
+            credentials: "omit",
+            cache: "no-store"
+          });
+
+
+          const contentType =
+            response.headers.get("content-type") || "";
+
+
+          let headers = "";
+
+          response.headers.forEach(function (value, key) {
+            headers += key + ": " + value + "\n";
+          });
+
+
+          if (
+            contentType.includes("mpegurl") ||
+            contentType.includes("text") ||
+            contentType.includes("json") ||
+            url.toLowerCase().includes(".m3u8")
+          ) {
+
+            const text = await response.text();
+
+            status.textContent =
+              "SUCCESS\n\n" +
+              "HTTP " +
+              response.status +
+              " " +
+              response.statusText +
+              "\n\n" +
+              "Content-Type: " +
+              contentType +
+              "\n\n" +
+              "Response Headers:\n" +
+              headers;
+
+            responseBox.textContent = text;
+
+          } else {
+
+            const blob = await response.blob();
+
+            status.textContent =
+              "SUCCESS\n\n" +
+              "HTTP " +
+              response.status +
+              " " +
+              response.statusText +
+              "\n\n" +
+              "Content-Type: " +
+              contentType +
+              "\n\n" +
+              "Size: " +
+              blob.size.toLocaleString() +
+              " bytes\n\n" +
+              "Response Headers:\n" +
+              headers;
+
+            responseBox.textContent =
+              "Binary response received.\n\n" +
+              "Size: " +
+              blob.size.toLocaleString() +
+              " bytes";
+
+          }
+
+        } catch (error) {
+
+          console.error(error);
+
+          status.textContent =
+            "BUTTON WORKS ✓\n\n" +
+            "REQUEST FAILED\n\n" +
+            error.message;
+
+          responseBox.textContent =
+            "The browser could not expose the response.\n\n" +
+            "Check the browser Console and Network tabs. " +
+            "For cross-origin URLs, CORS is the most common reason.";
+
+        }
+
+      });
+
+    });
+  </script></body>
 </html>

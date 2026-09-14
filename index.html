@@ -1,87 +1,255 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proxy Test</title>
-  <style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>CDN Request Tester</title>  <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;
+      max-width: 1000px;
       margin: 40px auto;
       padding: 20px;
     }
 
     input {
       width: 100%;
-      padding: 12px;
       box-sizing: border-box;
-      margin-bottom: 10px;
+      padding: 12px;
+      margin-top: 8px;
+      margin-bottom: 15px;
+      font-size: 14px;
     }
 
     button {
-      padding: 12px 20px;
+      padding: 12px 25px;
+      font-size: 16px;
       cursor: pointer;
     }
 
-    pre {
+    #status {
       margin-top: 20px;
       padding: 15px;
-      background: #f4f4f4;
+      background: #eee;
+      white-space: pre-wrap;
+    }
+
+    #response {
+      margin-top: 15px;
+      padding: 15px;
+      background: #111;
+      color: #fff;
       white-space: pre-wrap;
       word-break: break-word;
-      max-height: 500px;
       overflow: auto;
+      max-height: 600px;
+      font-family: monospace;
     }
-  </style>
-</head>
-<body>
 
-  <h2>Stream Request Test</h2>
+    .note {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+  </style></head><body>  <h2>CDN Request Tester</h2>  <div class="note">
+    Paste an M3U8 playlist URL or a video segment URL.
+    The custom header is configured directly in the JavaScript.
+  </div><input
+id="targetUrl"
+type="url"
+placeholder="https://example.com/playlist.m3u8"
 
-  <input
-    id="url"
-    type="url"
-    placeholder="https://example.com/playlist.m3u8"
-  >
+«»
 
-  <button id="fetchButton">Fetch Stream</button>
+  <button id="requestButton" type="button">
+    Send Request
+  </button>  <div id="status">Ready.</div>  <pre id="response"></pre>  <script>
 
-  <pre id="output">Response will appear here...</pre>
+    /*
+     * ==========================================
+     * CUSTOM HEADER
+     * ==========================================
+     *
+     * Change these values for your test.
+     *
+     * Example:
+     *
+     * "X-Custom-Header": "test"
+     *
+     * You can also leave this object empty:
+     *
+     * const CUSTOM_HEADERS = {};
+     *
+     * Browser-controlled headers such as
+     * Origin, Host and User-Agent cannot be
+     * manually spoofed here.
+     */
 
-  <script>
-    const button = document.getElementById("fetchButton");
-    const input = document.getElementById("url");
-    const output = document.getElementById("output");
+    const CUSTOM_HEADERS = {
+      "X-Custom-Header": "https://flixcloud.cc"
+    };
 
-    button.addEventListener("click", async () => {
-      const targetUrl = input.value.trim();
 
-      if (!targetUrl) {
-        output.textContent = "Enter a URL first.";
+    const button = document.getElementById("requestButton");
+    const input = document.getElementById("targetUrl");
+    const status = document.getElementById("status");
+    const responseBox = document.getElementById("response");
+
+
+    button.addEventListener("click", async function () {
+
+      const url = input.value.trim();
+
+      responseBox.textContent = "";
+      status.textContent = "Starting request...";
+
+      if (!url) {
+        status.textContent = "ERROR: Please paste a URL.";
         return;
       }
 
+
+      /*
+       * Validate URL
+       */
+
       try {
-        output.textContent = "Requesting...";
+        new URL(url);
+      } catch {
+        status.textContent = "ERROR: Invalid URL.";
+        return;
+      }
 
-        // Encode the target URL so it can safely be placed
-        // inside the query string.
-        const proxyUrl =
-          "/proxy.js?url=" + encodeURIComponent(targetUrl);
 
-        const response = await fetch(proxyUrl);
+      /*
+       * Show information about the request
+       */
 
-        const data = await response.text();
+      status.textContent =
+        "Requesting:\n" +
+        url +
+        "\n\n" +
+        "Custom headers:\n" +
+        JSON.stringify(CUSTOM_HEADERS, null, 2);
 
-        output.textContent =
-          "HTTP " + response.status + "\n\n" + data;
+
+      console.log("Target:", url);
+      console.log("Headers:", CUSTOM_HEADERS);
+
+
+      try {
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: CUSTOM_HEADERS,
+          credentials: "omit",
+          cache: "no-store"
+        });
+
+
+        console.log("Response:", response);
+
+
+        /*
+         * Read response headers that the browser
+         * allows JavaScript to access.
+         */
+
+        let headersText = "";
+
+        response.headers.forEach((value, key) => {
+          headersText += key + ": " + value + "\n";
+        });
+
+
+        /*
+         * Read response body.
+         *
+         * This works nicely for M3U8/text responses.
+         * For binary video segments, we display
+         * information instead of trying to print
+         * binary data as text.
+         */
+
+        const contentType =
+          response.headers.get("content-type") || "";
+
+
+        if (
+          contentType.includes("text") ||
+          contentType.includes("mpegurl") ||
+          contentType.includes("json") ||
+          url.toLowerCase().includes(".m3u8")
+        ) {
+
+          const text = await response.text();
+
+          status.textContent =
+            "REQUEST SUCCESSFUL\n\n" +
+            "HTTP Status: " +
+            response.status +
+            " " +
+            response.statusText +
+            "\n\n" +
+            "Content-Type: " +
+            contentType +
+            "\n\n" +
+            "Response Headers:\n" +
+            headersText;
+
+          responseBox.textContent = text;
+
+        } else {
+
+          const blob = await response.blob();
+
+          status.textContent =
+            "REQUEST SUCCESSFUL\n\n" +
+            "HTTP Status: " +
+            response.status +
+            " " +
+            response.statusText +
+            "\n\n" +
+            "Content-Type: " +
+            contentType +
+            "\n\n" +
+            "Size: " +
+            blob.size.toLocaleString() +
+            " bytes\n\n" +
+            "Response Headers:\n" +
+            headersText;
+
+          responseBox.textContent =
+            "Binary response received.\n\n" +
+            "Content-Type: " +
+            contentType +
+            "\n" +
+            "Size: " +
+            blob.size.toLocaleString() +
+            " bytes";
+        }
 
       } catch (error) {
-        output.textContent = "Error: " + error.message;
-      }
-    });
-  </script>
 
-</body>
+        console.error("REQUEST ERROR:", error);
+
+
+        status.textContent =
+          "REQUEST FAILED\n\n" +
+          "Error:\n" +
+          error.message +
+          "\n\n" +
+          "If the request appears in DevTools → Network but " +
+          "JavaScript cannot read the response, the most likely " +
+          "cause is CORS.";
+
+        responseBox.textContent =
+          "The browser did not expose the response to JavaScript.\n\n" +
+          "Check DevTools → Network for:\n" +
+          "1. The actual request\n" +
+          "2. An OPTIONS request (CORS preflight)\n" +
+          "3. Access-Control-Allow-Origin\n" +
+          "4. Access-Control-Allow-Headers";
+      }
+
+    });
+
+  </script></body>
 </html>
